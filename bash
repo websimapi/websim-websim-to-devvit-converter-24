@@ -1,0 +1,1 @@
+devvit redis clear
