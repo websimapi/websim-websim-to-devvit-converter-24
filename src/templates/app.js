@@ -4,11 +4,14 @@ export const getMainTs = (title) => {
 import express from 'express';
 import { 
     createServer, 
-    context, 
     getServerPort, 
     redis, 
     reddit 
 } from '@devvit/web/server';
+
+// Note: 'context' is a global provided by the Devvit runtime to the server process.
+// Do not import it from @devvit/web/server.
+declare const context: any;
 
 const app = express();
 
@@ -44,8 +47,8 @@ async function fetchAllData() {
         };
         
         try {
-            // Try to get current user from context or Reddit API
-            if (context.userId) {
+            // Try to get current user from global context or Reddit API
+            if (typeof context !== 'undefined' && context.userId) {
                 user = { 
                     id: context.userId, 
                     username: context.username || 'RedditUser',

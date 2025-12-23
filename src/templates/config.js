@@ -46,7 +46,7 @@ export const generateDevvitJson = (slug) => JSON.stringify({
     }
   },
   "server": {
-    "entry": "index.cjs"
+    "entry": "src/server/index.ts"
   },
   "permissions": {
     "redis": true,
@@ -105,10 +105,10 @@ export default defineConfig({
     alias: {
       // CRITICAL: Remotion and some React libs might try to import jsx-dev-runtime in 'dev' mode.
       // We alias to a local proxy that implements jsxDEV using the production jsx runtime.
-      'react/jsx-dev-runtime': '/jsx-dev-proxy.js',
+      'react/jsx-dev-runtime': './jsx-dev-proxy.js',
       'react/jsx-runtime': 'react/jsx-runtime',
       'remotion': 'remotion',
-      'websim': '/websim_package.js'
+      'websim': './websim_package.js'
     },
     // Ensure we prioritize browser builds
     mainFields: ['browser', 'module', 'main'],
