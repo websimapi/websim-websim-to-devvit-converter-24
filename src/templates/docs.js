@@ -55,6 +55,16 @@ Converted from WebSim: ${url}
 
 ## Modifications
 
+### Network Calls (Bypassing CSP)
+The Reddit Webview blocks all external network calls from the browser. To fetch data from an external API:
+1. Define a route in `src/server/index.ts` starting with `/api/`.
+2. Perform the `fetch` on the server using the native `fetch` or `@devvit/public-api`.
+3. Add the target domain to the `permissions.http.domains` list in `devvit.json`.
+4. Call your internal API from the client: `fetch('/api/your-route')`.
+
+### Bundling CDNs
+This project automatically detects common CDN links (React, Tailwind, Three.js) and converts them into bundled NPM dependencies. If a library is missing, add it to `package.json` and import it directly in your JS files.
+
 To modify the game:
 - Edit files in \`src/client/\`
 - Run \`npm run build:client\` to rebuild

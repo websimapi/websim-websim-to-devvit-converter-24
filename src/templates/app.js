@@ -75,6 +75,19 @@ async function fetchAllData() {
 // --- API Routes (Client -> Server) ---
 // Note: All client-callable endpoints must start with /api/
 
+/**
+ * PROXY EXAMPLE: Use this to fetch external data to bypass Client CSP
+ * router.get('/api/external-data', async (req, res) => {
+ *   try {
+ *     const response = await fetch('https://api.external.com/data');
+ *     const json = await response.json();
+ *     res.json(json);
+ *   } catch (e) {
+ *     res.status(500).json({ error: e.message });
+ *   }
+ * });
+ */
+
 router.get('/api/init', async (_req, res) => {
     const data = await fetchAllData();
     res.json(data);
@@ -126,6 +139,7 @@ router.post('/internal/createPost', async (_req, res) => {
     console.log('Creating game post...');
     
     try {
+        // Ensure the post is created as the user if permissions allow
         // Use the global context object from @devvit/web/server
         const { subredditName } = context;
         console.log('Context Subreddit:', subredditName);

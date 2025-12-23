@@ -62,12 +62,18 @@ export async function generateDevvitZip(projectMeta, assets, includeReadme = tru
     // 2. Configs
     const hasRemotion = !!analyzer.dependencies['remotion'];
     const hasReact = hasRemotion || !!analyzer.dependencies['react'];
+    const hasTailwind = !!analyzer.hasTailwind;
 
     const extraDevDeps = {};
     if (hasReact) {
         extraDevDeps['@vitejs/plugin-react'] = '^4.2.0';
         extraDevDeps['@babel/core'] = '^7.23.0';
         extraDevDeps['@babel/preset-react'] = '^7.23.0';
+    }
+    if (hasTailwind) {
+        extraDevDeps['tailwindcss'] = '^3.4.0';
+        extraDevDeps['autoprefixer'] = '^10.4.0';
+        extraDevDeps['postcss'] = '^8.4.0';
     }
 
     zip.file("package.json", generatePackageJson(projectSlug, analyzer.dependencies, extraDevDeps));
@@ -86,7 +92,7 @@ export async function generateDevvitZip(projectMeta, assets, includeReadme = tru
     const srcFolder = zip.folder("src");
     const clientFolder = srcFolder.folder("client");
     
-    clientFolder.file("vite.config.ts", generateClientViteConfig({ hasReact, hasRemotion }));
+    clientFolder.file("vite.config.ts", generateClientViteConfig({ hasReact, hasRemotion, hasTailwind }));
 
     for (const [path, content] of Object.entries(clientFiles)) {
         clientFolder.file(path, content);

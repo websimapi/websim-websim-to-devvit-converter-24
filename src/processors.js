@@ -24,6 +24,12 @@ export class AssetAnalyzer {
         if (!source || typeof source !== 'string') return source;
         if (source.startsWith('.') || source.startsWith('/') || source.startsWith('data:') || source.startsWith('blob:')) return source;
 
+        // Special case: Tailwind CDN
+        if (source.includes('cdn.tailwindcss.com')) {
+            this.hasTailwind = true;
+            return null; // Handled specially in processHTML
+        }
+
         // 1. Remotion Handling
         if (source.includes('@websim/remotion')) {
             this.dependencies['remotion'] = '^4.0.0';
@@ -79,7 +85,7 @@ export class AssetAnalyzer {
         // 4. Generic esm.sh / unpkg Handling
         // Capture package name, optional version, AND subpath
         // Updated to handle scoped packages correctly (e.g. @remotion/player)
-        const pkgMatch = source.match(/(?:esm\.sh|unpkg\.com|jsdelivr\.net)\/(?:npm\/)?((?:@[^/@]+\/)?[^/@]+)(?:@([^/?]+))?(\/[^?]*)?/);
+        const pkgMatch = source.match(/(?:esm\.sh|unpkg\.com|jsdelivr\.net|cdnjs\.cloudflare\.com)\/(?:npm\/|ajax\/libs\/)?((?:@[^/@]+\/)?[^/@]+)(?:@([^/?]+))?(\/[^?]*)?/);
         if (pkgMatch) {
             const pkg = pkgMatch[1];
             const ver = pkgMatch[2];
@@ -273,8 +279,29 @@ export class AssetAnalyzer {
             const srcMatch = attrs.match(/src=["']([^"']+)["']/i);
             if (srcMatch) {
                 const src = srcMatch[1];
-                // Remote scripts: Leave as is (Devvit/CSP will handle blocking)
-                if (src.match(/^(https?:|\/\/)/i)) return match;
+                
+                // Handle Remote Scripts (CDNs)
+                if (src.match(/^(https?:|\/\/)/i)) {
+                    // Check for Tailwind specifically
+                    if (src.includes('cdn.tailwindcss.com')) {
+                        this.hasTailwind = true;
+                        return '<!-- Tailwind CDN script converted to build-time plugin -->';
+                    }
+
+                    const pkgInfo = this.normalizeImport(src);
+                    if (pkgInfo && !pkgInfo.startsWith('http')) {
+                        scriptCounter++;
+                        const proxyName = `cdn_proxy_${scriptCounter}.js`;
+                        extractedScripts.push({ 
+                            filename: proxyName, 
+                            content: `import ${JSON.stringify(pkgInfo)};\nconsole.log("[WebSim] Bundled CDN dependency: ${pkgInfo}");` 
+                        });
+                        return `<script type="module" src="./${proxyName}"></script>`;
+                    }
+                    
+                    // If it's a remote script we can't map, we keep it but it will likely fail CSP
+                    return match;
+                }
                 
                 // Local scripts: Ensure type="module" so Vite bundles them
                 if (!attrs.includes('type="module"')) {
@@ -311,6 +338,29 @@ export class AssetAnalyzer {
             }
 
             return `<script src="./${newScriptName}" ${newAttrs}></script>`;
+        });
+
+        // 3.5 Handle Remote Stylesheets (CDNs)
+        html = html.replace(/<link([^>]*)href=["'](https?:\/\/[^"']+)["']([^>]*)>/gi, (match, before, href, after) => {
+            // If it's a stylesheet
+            if (match.includes('rel="stylesheet"') || match.includes("rel='stylesheet'")) {
+                // If it's a known CSS framework or Google Fonts
+                if (href.includes('fonts.googleapis.com') || href.includes('cdn.jsdelivr.net') || href.includes('cdnjs.cloudflare.com')) {
+                    // We can't easily bundle Google Fonts via NPM in a generic way without more config,
+                    // but we can warn the user. For common CSS libs (Bootstrap, etc), we map them.
+                    const pkgInfo = this.normalizeImport(href);
+                    if (pkgInfo && !pkgInfo.startsWith('http')) {
+                        scriptCounter++;
+                        const cssProxyName = `cdn_css_proxy_${scriptCounter}.js`;
+                        extractedScripts.push({ 
+                            filename: cssProxyName, 
+                            content: `import ${JSON.stringify(pkgInfo)};` 
+                        });
+                        return `<script type="module" src="./${cssProxyName}"></script>`;
+                    }
+                }
+            }
+            return match;
         });
 
         // 4. Remove inline event handlers (CSP) - crude regex

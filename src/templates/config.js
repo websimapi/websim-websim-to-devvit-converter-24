@@ -50,6 +50,10 @@ export const generateDevvitJson = (slug) => JSON.stringify({
   },
   "permissions": {
     "redis": true,
+    "http": {
+        "enable": true,
+        "domains": ["www.redditstatic.com"]
+    },
     "reddit": {
       "enable": true,
       "asUser": ["SUBMIT_POST", "SUBMIT_COMMENT"]
@@ -70,7 +74,7 @@ export const generateDevvitJson = (slug) => JSON.stringify({
   }
 }, null, 2);
 
-export const generateClientViteConfig = ({ hasReact = false, hasRemotion = false } = {}) => `
+export const generateClientViteConfig = ({ hasReact = false, hasRemotion = false, hasTailwind = false } = {}) => `
 import { defineConfig } from 'vite';
 ${hasReact ? "import react from '@vitejs/plugin-react';" : ""}
 
@@ -90,6 +94,13 @@ export default defineConfig({
       }
     }),` : ''}
   ],
+  css: {
+    postcss: {
+      plugins: [
+        ${hasTailwind ? "require('tailwindcss'), require('autoprefixer')," : ""}
+      ],
+    },
+  },
   resolve: {
     alias: {
       // CRITICAL: Remotion and some React libs might try to import jsx-dev-runtime in 'dev' mode.
